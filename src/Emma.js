@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+import {Map, TileLayer, CircleMarker} from 'react-leaflet'
 import csv from './data.csv'
 class Emma extends Component {
   state={}
@@ -46,28 +47,6 @@ class Emma extends Component {
       //console.log('data',data.ps[29960],data.ys[1993])
     })
   }
-  draw() {
-    const year=this.state.y||this.state.year
-    let t=0,n=0
-    if (this.canvas) {
-      if (!this.ctx) this.ctx=this.canvas.getContext("2d")
-      this.ctx.clearRect(0, 0, 800, 600)
-      this.state.data[year].forEach(d=>{
-        const p=Math.round(d.x)*1000+Math.round(d.y)
-        if (Object.keys(this.state.data.ps[p]).length>=this.state.n) {
-          n+=1/this.state.data.ps[p][year].length
-          t+=d.n/this.state.data.ps[p][year].length
-          const l=this.state.data.l
-          this.ctx.beginPath()
-          if (d.n===0) this.ctx.strokeStyle = "rgb(255, 255, 200)"
-          else this.ctx.strokeStyle ='rgb(0,'+Math.round((1-(d.n-l.n.min)/(l.n.max-l.n.min))*255)+', 0)'  
-          this.ctx.arc(10+(d.x-l.x.min)/(l.x.max-l.x.min)*780,10+(d.y-l.y.min)/(l.y.max-l.y.min)*580, 1, 0, 2 * Math.PI, true)
-          this.ctx.stroke()
-        }
-      })
-    }
-    return {t:t,n:n}
-  }
   totals(data) {
     const ret={}
     Object.keys(data.ys).forEach(y=>{
@@ -88,19 +67,38 @@ class Emma extends Component {
     return ret
   }
   render() {
-    const year=this.state.y||this.state.year
+    const year=this.state.y||this.state.year,l=this.state.data&&this.state.data.l
     if (!year) return null
-    let t=this.draw()
-    if (!this.state.y) setTimeout(()=>this.setState({year:year===2018?1993:year+1}),year===2018?2000:300)
+    if (!this.state.y) setTimeout(()=>this.setState({year:year===2018?1993:year+1}),year===2018?5000:1000)
     return <div>
       <div>
         <Select ks={Object.keys(this.state.data.ys)} k={this.state.y} set={(y)=>this.setState({y:y})} name="Year" />
         <Select ks={Object.keys(this.state.data.n).reverse()} k={this.state.n} set={(n)=>this.setState({n:n})} name="N" />
-  <span> {year} {Math.round(t.t/t.n)}</span>
+        <span>{year}</span>
       </div>
-      <canvas ref={r=>this.canvas=r} width={800} height={600}/>
+      <Map bounds={[[l.x.min,l.y.min],[l.x.max,l.y.max]]}>
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+      />
+      <Points data={this.state.data} year={year} n={this.state.n} />
+      </Map>
       <Totals data={this.state.data} totals={this.state.totals}/>
-      </div> 
+      </div>
+  }
+}
+class Points extends Component {
+  render() {
+    let ret=[],i=0
+    this.props.data[this.props.year].forEach(d=>{
+      const p=Math.round(d.x)*1000+Math.round(d.y)
+      if (Object.keys(this.props.data.ps[p]).length>=this.props.n) {
+        const l=this.props.data.l,c=d.n/(l.n.max-l.n.min)
+        const color=c===0?'':c>0.2?c>0.5?'red':'blue':'green'
+        ret.push(<CircleMarker key={i++} center={[d.x,d.y]} radius={1} color={color}/>)
+      }
+    })
+    return ret
   }
 }
 
