@@ -23,7 +23,8 @@ class Emma extends Component {
           data[year].push(d)
           const p=Math.round(d.x)*1000+Math.round(d.y)
           if (!data.ps[p]) data.ps[p]={}
-          data.ps[p][year]=year
+          if (!data.ps[p][year]) data.ps[p][year]=[]
+          data.ps[p][year].push(d)
           ;['x','y','n'].forEach(k=>{
             if (data.l[k]===undefined) data.l[k]={min:d[k],max:d[k]}
             else if (d[k]<data.l[k].min) data.l[k].min=d[k]
@@ -35,23 +36,27 @@ class Emma extends Component {
         const n=Object.keys(data.ps[p]).length
         Object.keys(data.ps[p]).forEach(y=>{
           if (!data.ys[y]) data.ys[y]=[]
-          if (!data.ys[y][n]) data.ys[y][n]=1
-          else data.ys[y][n]++
+          if (!data.ys[y][n]) data.ys[y][n]=[]
+          data.ys[y][n].push(p)
         })
-        if (!data.n[n]) data.n[n]=n
+        if (!data.n[n]) data.n[n]=[]
+        data.n[n].push(p)
       })
-      this.setState({data:data,year:1993,n:0})
-      //console.log('data',data)
+      this.setState({data:data,year:1993,n:0,totals:this.totals(data)})
+      //console.log('data',data.ps[29960],data.ys[1993])
     })
   }
   draw() {
     const year=this.state.y||this.state.year
+    let t=0,n=0
     if (this.canvas) {
       if (!this.ctx) this.ctx=this.canvas.getContext("2d")
       this.ctx.clearRect(0, 0, 800, 600)
       this.state.data[year].forEach(d=>{
         const p=Math.round(d.x)*1000+Math.round(d.y)
         if (Object.keys(this.state.data.ps[p]).length>=this.state.n) {
+          n+=1/this.state.data.ps[p][year].length
+          t+=d.n/this.state.data.ps[p][year].length
           const l=this.state.data.l
           this.ctx.beginPath()
           if (d.n===0) this.ctx.strokeStyle = "rgb(255, 255, 200)"
@@ -61,20 +66,72 @@ class Emma extends Component {
         }
       })
     }
+    return {t:t,n:n}
+  }
+  totals(data) {
+    const ret={}
+    Object.keys(data.ys).forEach(y=>{
+      Object.keys(data.ys[y]).forEach(c=>{
+        let t=0,n=0
+        data.ys[y][c].forEach(p=>{
+          data.ps[p][y].forEach(d=>{
+            n+=1/data.ps[p][y].length
+            t+=d.n/data.ps[p][y].length
+          })
+        })
+        if (!ret[y]) ret[y]={}
+        if (!ret[y][c]) ret[y][c]={}
+        ret[y][c]={n:n,t:t}
+      })
+    })
+    //console.log('totals',ret)
+    return ret
   }
   render() {
     const year=this.state.y||this.state.year
     if (!year) return null
-    else this.draw()
+    let t=this.draw()
     if (!this.state.y) setTimeout(()=>this.setState({year:year===2018?1993:year+1}),year===2018?2000:300)
     return <div>
       <div>
         <Select ks={Object.keys(this.state.data.ys)} k={this.state.y} set={(y)=>this.setState({y:y})} name="Year" />
         <Select ks={Object.keys(this.state.data.n).reverse()} k={this.state.n} set={(n)=>this.setState({n:n})} name="N" />
-        <span>{year}</span>
+  <span> {year} {Math.round(t.t/t.n)}</span>
       </div>
       <canvas ref={r=>this.canvas=r} width={800} height={600}/>
+      <Totals data={this.state.data} totals={this.state.totals}/>
       </div> 
+  }
+}
+
+class Totals extends Component {
+  render() {
+    const d=this.props.data,totals=this.props.totals
+    return <table>
+    <thead><tr><th>Years</th>
+    {Object.keys(d.n).reverse().map(n=>{
+      return <th colspan={4} key={n}>{n}</th>
+    })}
+    </tr>
+   <tr><th>Year</th>
+    {Object.keys(d.n).reverse().map(n=>{
+      return <React.Fragment key={n}><th>n</th><th>total</th><th>μ</th><th>μ+</th></React.Fragment>
+    })}
+    </tr>
+    </thead>  
+    <tbody>
+    {Object.keys(totals).map(y=>{
+      let t=0,n=0
+      return <tr key={y}><td>{y}</td>
+      {Object.keys(d.n).reverse().map(c=>{
+        if (!totals[y][c]) return <React.Fragment key={c}><td></td><td></td><td></td><td></td></React.Fragment>
+        const dt=totals[y][c].t,dn=totals[y][c].n
+        t+=dt
+        n+=dn
+        return <React.Fragment key={c}><td>{Math.round(dn)}</td><td>{Math.round(dt)}</td><td>{Math.round(dt/dn)}</td><td>{Math.round(t/n)}</td></React.Fragment>
+      })}</tr>})}
+      </tbody>
+    </table>
   }
 }
 
