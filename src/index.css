@@ -1,0 +1,43 @@
+.red{
+    color:red;
+}
+.amber{
+    color:orange;
+}
+.green{
+    color:limegreen;
+}
+.grey{
+    color:lightgray;
+}
+.blue{
+    color:#007ba7;
+}
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+.big {font-size: 28px;}
+.huge{font-size: 38px;}
+.label{
+    /* Avery 5160 labels -- CSS and HTML by MM at Boulder Information Services */
+    width: 99mm; /* plus .6 inches from padding */
+    height: 38mm; /* plus .125 inches from padding */
+    padding: 3mm 3mm 0;
+    margin-right: 3mm; /* the gutter */
+
+    float: left;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 20px;
+    color: black;
+    text-align: center;
+    overflow: hidden;
+    border: none;
+    outline: none; /* outline doesn't occupy space like border does */
+    }
+.page-break  {
+    clear: left;
+    display:block;
+    page-break-after:always;
+    }
