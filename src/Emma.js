@@ -1,11 +1,10 @@
 import React, { Component } from 'react'
 import {Map, TileLayer, CircleMarker} from 'react-leaflet'
-import csv from './data.csv'
+import cpr from './cpr.csv'
 class Emma extends Component {
   state={}
   componentDidMount() {
-    //ajax('data.csv').then(r=>{
-    fetch(csv)
+    fetch(cpr)
   .then(function(response) {
     return response.text()
   })
