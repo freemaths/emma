@@ -1,8 +1,17 @@
+import { Transformation } from 'leaflet'
 import React, { Component } from 'react'
 import { Map, TileLayer, CircleMarker } from 'react-leaflet'
-import cpr from './cpr.csv'
+//import cpr from './cpr.csv'
+import SOCAT from './SOCAT.csv'
 
-function cprDate(str) {
+function dd_mm_yyyy(str) {
+  const m = str.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)$/)
+  const d= m? new Date(m[3], m[2]-1, m[1]) : null
+  if (!d || !d.getFullYear()) return null
+  else return d
+}
+
+function dd_mm_yyyy_HH_MM(str) {
   const m = str.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d) (\d\d):(\d\d)$/)
   const d= m? new Date(m[3], m[2]-1, m[1], m[4], m[5], 0) : null
   if (!d || !d.getFullYear()) return null
@@ -13,10 +22,14 @@ class Emma extends Component {
   state = {}
   data={}
   componentDidMount() {
-    this.load_data({ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:cprDate, errors:20})
+    //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
+    //this.load_data({ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:cprDate, errors:20})
+    //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
+    this.load_data({ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, date:dd_mm_yyyy, errors:20})
     .then(d=>{
       this.data[d.name]=d
       if (d.errors.length) console.log(d.name,'errors',d.errors)
+      console.log('SOCAT',d)
       this.setState({data:d,year:1993})
     }).catch(e=>{
       console.error(e.name,'too many errors',e.errors)
@@ -30,8 +43,7 @@ class Emma extends Component {
       })
       .then(csv => {
         let rows = csv.split(/\r\n|\n/).map(l => { return l.replace(/"([^,]*), ([^,]*)"/, "$2 $1").replace(/"/g, '').split(',') })
-        const head = rows[0]
-        //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
+        const head = rows[0].map(r=>{return r.trim()})
         const data = { name:f.name, l: {}, ps: {}, ys: {}, n: [], errors:[], lines:0}
         for (data.lines=1; data.lines<rows.length && data.errors.length<f.errors; data.lines++) {
           const r=rows[data.lines]
@@ -190,4 +202,4 @@ class Select extends Component {
   }
 }
 
-export default Emma
+export {Emma}
