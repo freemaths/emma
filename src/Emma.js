@@ -134,7 +134,7 @@ class Emma extends Component {
   render() {
     const year = this.state.y || this.state.year
     const data=this.state.data?this.data[this.state.data]:null
-    if (!year) return null
+    if (!year) return <div>loading data ...</div>
     else if (!data) return <Select ks={Object.keys(this.data)} k={this.state.data} set={(x) => this.setState({ data: x })} name="Data" />
     else if (!this.state.y &&!this.timer) this.timer=setTimeout(()=>{
       this.timer=null
