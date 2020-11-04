@@ -24,11 +24,11 @@ class Emma extends Component {
     //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
     //this.load_data({ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:dd_mm_yyyy_HH_MM, errors:20})
     //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
-    this.load_data({ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, filter:{n:{min:200,max:400},date:{min:1993,max:2019},x:{min:30,max:80},y:{min:-75,max:26}}, date:dd_mm_yyyy, errors:20})
+    this.load_data({ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, filter:{n:{min:250,max:350},date:{min:1993,max:2019},x:{min:30,max:80},y:{min:-75,max:26}}, date:dd_mm_yyyy, errors:20})
     .then(d=>{
       this.data[d.name]=d
       if (d.errors.length) console.log(d.name,'errors',d.errors)
-      console.log('SOCAT',d.lines,d.filter.length,Object.keys(d.ps).length,d)
+      console.log('SOCAT',{lines:d.lines,filtered:d.filter.length,used:Object.keys(d.ps).length,data:d})
       this.setState({data:d,year:1993})
     }).catch(e=>{
       console.error(e.name,'too many errors',e.errors)
@@ -159,12 +159,13 @@ class Emma extends Component {
 }
 class Points extends Component {
   render() {
-    let ret = [], i = 0
+    let ret = [], i = 0, deb=0
     this.props.data[this.props.year].forEach(d => {
       const p = Math.round(d.x) * 1000 + Math.round(d.y)
       if (Object.keys(this.props.data.ps[p]).length >= this.props.n) {
         const l = this.props.data.l, c = d.n / (l.n.max - l.n.min)
-        const color = '#00'+Math.round(c*255).toString(16)+'00'
+        const color = '#'+Math.round(c*255).toString(16)+'0000'
+        if (!deb++) console.log('color',color)
         ret.push(<CircleMarker key={i++} center={[d.x, d.y]} radius={1} color={color} />)
       }
     })
