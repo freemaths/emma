@@ -1,4 +1,3 @@
-import { Transformation } from 'leaflet'
 import React, { Component } from 'react'
 import { Map, TileLayer, CircleMarker } from 'react-leaflet'
 //import cpr from './cpr.csv'
@@ -10,26 +9,26 @@ function dd_mm_yyyy(str) {
   if (!d || !d.getFullYear()) return null
   else return d
 }
-
+/*
 function dd_mm_yyyy_HH_MM(str) {
   const m = str.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d) (\d\d):(\d\d)$/)
   const d= m? new Date(m[3], m[2]-1, m[1], m[4], m[5], 0) : null
   if (!d || !d.getFullYear()) return null
   else return d
 }
-
+*/
 class Emma extends Component {
   state = {}
   data={}
   componentDidMount() {
     //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
-    //this.load_data({ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:cprDate, errors:20})
+    //this.load_data({ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:dd_mm_yyyy_HH_MM, errors:20})
     //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
-    this.load_data({ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, date:dd_mm_yyyy, errors:20})
+    this.load_data({ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, filter:{n:{min:200,max:400},date:{min:1993,max:2019},x:{min:30,max:80},y:{min:-75,max:26}}, date:dd_mm_yyyy, errors:20})
     .then(d=>{
       this.data[d.name]=d
       if (d.errors.length) console.log(d.name,'errors',d.errors)
-      console.log('SOCAT',d)
+      console.log('SOCAT',d.lines,d.filter.length,Object.keys(d.ps).length,d)
       this.setState({data:d,year:1993})
     }).catch(e=>{
       console.error(e.name,'too many errors',e.errors)
@@ -44,7 +43,7 @@ class Emma extends Component {
       .then(csv => {
         let rows = csv.split(/\r\n|\n/).map(l => { return l.replace(/"([^,]*), ([^,]*)"/, "$2 $1").replace(/"/g, '').split(',') })
         const head = rows[0].map(r=>{return r.trim()})
-        const data = { name:f.name, l: {}, ps: {}, ys: {}, n: [], errors:[], lines:0}
+        const data = { name:f.name, l: {}, ps: {}, ys: {}, n: [], errors:[], lines:0, filter:[]}
         for (data.lines=1; data.lines<rows.length && data.errors.length<f.errors; data.lines++) {
           const r=rows[data.lines]
           const d = {},ks=Object.keys(f.cols)
@@ -67,7 +66,24 @@ class Emma extends Component {
             d.error=true
             data.errors.push({e:'3',file:f.name,line:data.lines,x:d.x,y:d.y,n:d.n})
           }
-          if (!d.error) {
+          if (!d.error) Object.keys(f.filter).forEach(x=>{
+            let l={line:data.lines}
+            if (x==='date') {
+              if (!d.filter && (d.date.getFullYear()<f.filter.date.min || d.date.getFullYear()>f.filter.date.max)) {
+                d.filter=true
+                l[x]=d[x].toString()
+                data.filter.push(l)
+              }
+            }
+            else {
+              if (!d.filter && (d[x]<f.filter[x].min || d[x]>f.filter[x].max)) {
+                d.filter=true
+                l[x]=d[x]
+                data.filter.push(l)
+              }
+            }
+          })
+          if (!d.error && !d.filter) {
             const year=d.date&&d.date.getFullYear()
             if (!data[year]) data[year] = []
             data[year].push(d)
@@ -75,7 +91,7 @@ class Emma extends Component {
             if (!data.ps[p]) data.ps[p] = {}
             if (!data.ps[p][year]) data.ps[p][year] = []
             data.ps[p][year].push(d)
-              ;['x', 'y', 'n'].forEach(k => {
+            ;['x', 'y', 'n'].forEach(k => {
                 if (data.l[k] === undefined) data.l[k] = { min: d[k], max: d[k] }
                 else if (d[k] < data.l[k].min) data.l[k].min = d[k]
                 else if (d[k] > data.l[k].max) data.l[k].max = d[k]
@@ -148,7 +164,7 @@ class Points extends Component {
       const p = Math.round(d.x) * 1000 + Math.round(d.y)
       if (Object.keys(this.props.data.ps[p]).length >= this.props.n) {
         const l = this.props.data.l, c = d.n / (l.n.max - l.n.min)
-        const color = c === 0 ? '' : c > 0.2 ? c > 0.5 ? 'red' : 'blue' : 'green'
+        const color = '#00'+Math.round(c*255).toString(16)+'00'
         ret.push(<CircleMarker key={i++} center={[d.x, d.y]} radius={1} color={color} />)
       }
     })
