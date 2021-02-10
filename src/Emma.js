@@ -139,13 +139,13 @@ class Emma extends Component {
     return ret
   }
   render() {
-    const year = this.state.y
-    const month = this.state.m
+    const y = this.state.y, y2 = this.state.y2
+    const m = this.state.m, m2 = this.state.m2
     const f = this.state.f
     const socat = this.state.socat
     const cpr = this.state.cpr
     if (!socat) return <div>loading data ...</div>
-    console.log('cpr', { limits: cpr.l, Jul2018: cpr.ps[2018][6] })
+    //console.log('cpr', { limits: cpr.l, Jul2018: cpr.ps[2018][6] })
     /*else if (!this.state.y && !this.timer) this.timer = setTimeout(() => {
       this.timer = null
       if (month < 11) this.setState({ month: month + 1 })
@@ -154,17 +154,19 @@ class Emma extends Component {
     */
     return <div>
       <div>
-        <Select ks={Object.keys(socat.ps)} k={this.state.y} set={y => this.setState({ y: y })} name="Year" />
-        <Select ks={mnth} k={this.state.m} set={m => this.setState({ m: m })} name="Month" />
+        <Select ks={Object.keys(socat.ps)} k={y} set={y => this.setState({ y: y })} name="Year" />
+        <Select ks={mnth} k={mnth[m]} set={m => this.setState({ m: m && mnth.indexOf(m) })} name="Month" />
+        <Select ks={Object.keys(socat.ps)} k={y2} set={y => this.setState({ y2: y })} name="...Year" />
+        <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" />
         <Select ks={['CO2', 'SSS', 'SST', 'ABUN']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
-        <span> {year} {mnth[month]}</span>
+        <span> {y}{y2 ? '-' + y2 : null} {mnth[m]}{m2 ? '-' + mnth[m2] : null}</span>
       </div>
       {socat && <Map bounds={[[socat.l.x.min, socat.l.y.min], [socat.l.x.max, socat.l.y.max]]}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        {f && <PYM data={f === 'ABUN' ? cpr : socat} month={month} year={year} f={f} />}
+        {f && <PYM data={f === 'ABUN' ? cpr : socat} m={m} y={y} y2={y2} m2={m2} f={f} />}
       </Map>}
     </div>
   }
@@ -173,18 +175,20 @@ class Emma extends Component {
 
 class PYM extends Component {
   render() {
-    const y = this.props.year, m = this.props.month, f = this.props.f, d = this.props.data,
+    const y = this.props.y, m = this.props.m, y2 = this.props.y2, m2 = this.props.m2, f = this.props.f, d = this.props.data,
       ys = Object.keys(d.ps)
     //console.log('PYM', { y, m, f, d, l: d.l })
     let ret = []
-    if (!y) {
-      ys.forEach(y => {
-        if (!m) mnth.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
-        else ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />)
-      })
-    }
-    else if (!m) mnth.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
-    else ret = <Points year={y} month={m} f={f} data={d} />
+    ys.forEach(yr => {
+      if (!y || yr === y || (y2 && yr <= y2 && yr > y)) {
+        mnth.forEach(mn => {
+          const mi = mnth.indexOf(mn)
+          if ((!m && m !== 0) || mi === m || (m2 && mi > m && mi <= m2)) {
+            ret = ret.concat(<Points i={ret.length} y={yr} m={mi} f={f} data={d} />)
+          }
+        })
+      }
+    })
     return ret
   }
 }
@@ -192,7 +196,7 @@ class PYM extends Component {
 class Points extends Component {
   render() {
     let i = this.props.i || 0, ret = []
-    const y = this.props.year, mn = this.props.month, m = mn && mnth.indexOf(mn), f = this.props.f, d = this.props.data,
+    const y = this.props.y, m = this.props.m, f = this.props.f, d = this.props.data,
       ps = y && m && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
     //console.log('Points', { y, m, f, d, l: d.l })
     if (ps) ps.forEach(p => {
