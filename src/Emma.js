@@ -1,115 +1,120 @@
 import React, { Component } from 'react'
 import { Map, TileLayer, CircleMarker } from 'react-leaflet'
-import cpr from './cpr.csv.gz'
+//import cpr from './cpr.csv.gz'
 import SOCAT from './SOCAT.csv.gz'
 import pako from 'pako'
 
 function dd_mm_yyyy(str) {
   const m = str.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)( (\d\d):(\d\d))?$/)
-  const d= m? new Date(m[3], m[2]-1, m[1], (m[4]&&m[5])||0, (m[4]&&m[6])||0, 0) : null
+  const d = m ? new Date(m[3], m[2] - 1, m[1], (m[4] && m[5]) || 0, (m[4] && m[6]) || 0, 0) : null
   if (!d || !d.getFullYear()) return null
   else return d
 }
 
 class Emma extends Component {
   state = {}
-  data={}
+  data = {}
   componentDidMount() {
     [
       //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
-      { data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:dd_mm_yyyy, errors:20}
-    //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
-    ,{ data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', n: 'FCO2_AVE_WEIGHTED'}, filter:{n:{min:100,max:500},date:{min:1993,max:2019},x:{min:30,max:80},y:{min:-75,max:26}}, date:dd_mm_yyyy, errors:20}
-    ].forEach(s=>this.load_data(s)
-    .then(d=>{
-      this.data[d.name]=d
-      if (d.errors.length) console.log(d.name,'errors',d.errors)
-      console.log(d.name,{lines:d.lines,filtered:d.filter,points:Object.keys(d.ps).length})
-      if (d.name==='SOCAT') this.setState({year:1993})
-    }).catch(e=>{
-      console.error(e.name,'too many errors',e.errors)
-    }))
+      //{ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:dd_mm_yyyy, errors:20}
+      //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
+      { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', c: 'FCO2_AVE_WEIGHTED', s: 'SALINITY_AVE_WEIGHTED', t: 'SST_AVE_WEIGHTED' }, filter: { s: { min: 26, max: 40 }, c: { min: 200, max: 500 }, date: { min: 1993, max: 2019 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
+    ].forEach(s => this.load_data(s)
+      .then(d => {
+        this.data[d.name] = d
+        if (d.errors.length) console.log(d.name, 'errors', d.errors)
+        console.log(d.name, { lines: d.lines, filtered: d.filter, d })
+        if (d.name === 'SOCAT') this.setState({ year: 1993, month: 0, f: 'c', data: d })
+      }).catch(e => {
+        console.error(e.name, 'too many errors', e.errors)
+      }))
   }
   load_data(f) {
     return new Promise((resolve, reject) => {
       fetch(f.data)
-      .then(function (response) {
-        return response.arrayBuffer()
-      })
-      .then(csv => {
-        let rows = pako.inflate(csv,{to:'string'}).split(/\r\n|\n/).map(l => { return l.replace(/"([^,]*), ([^,]*)"/, "$2 $1").replace(/"/g, '').split(',') })
-        const head = rows[0].map(r=>{return r.trim()})
-        const data = { name:f.name, l: {}, ps: {}, ys: {}, n: [], errors:[], lines:0, filter:0}
-        for (data.lines=1; data.lines<rows.length && data.errors.length<f.errors; data.lines++) {
-          const r=rows[data.lines]
-          const d = {},ks=Object.keys(f.cols)
-          for (var i=0;i<ks.length;i++) {
-            const k=ks[i]
-            if (!r[head.indexOf(f.cols[k])]) {
-              d.error=true
-              if (!d.error) data.errors.push({e:'1',file:f.name,line:data.lines,k:k})
-            }
-            else {
-              if (k === 'date') d[k]=f.date(r[head.indexOf(f.cols[k])])
-              else d[k] = r[head.indexOf(f.cols[k])] * 1
-            }
-            if (!d[k] && d[k]!==0 && !d.error) {
-              d.error=true
-              data.errors.push({e:'2',file:f.name,line:data.lines,k:k})
-            }
-          }
-          if (!d.error && ((!d.n&&d.n!==0) || (!d.x&&d.x!==0) || (!d.y&&d.y!==0) || !d.date)) {
-            d.error=true
-            data.errors.push({e:'3',file:f.name,line:data.lines,x:d.x,y:d.y,n:d.n})
-          }
-          if (!d.error && f.filter) Object.keys(f.filter).forEach(x=>{
-            let l={line:data.lines}
-            if (x==='date') {
-              if (!d.filter && (d.date.getFullYear()<f.filter.date.min || d.date.getFullYear()>f.filter.date.max)) {
-                d.filter=true
-                l[x]=d[x].toString()
-                data.filter++ //.push(l)
+        .then(function (response) {
+          return response.arrayBuffer()
+        })
+        .then(csv => {
+          let rows = pako.inflate(csv, { to: 'string' }).split(/\r\n|\n/).map(l => { return l.replace(/"([^,]*), ([^,]*)"/, "$2 $1").replace(/"/g, '').split(',') })
+          const head = rows[0].map(r => { return r.trim() })
+          const data = { name: f.name, l: {}, ps: {}, ys: {}, n: [], errors: [], lines: 0, filter: 0 }
+          for (data.lines = 1; data.lines < rows.length && data.errors.length < f.errors; data.lines++) {
+            const r = rows[data.lines]
+            const d = {}, ks = Object.keys(f.cols)
+            for (var i = 0; i < ks.length; i++) {
+              const k = ks[i]
+              if (!r[head.indexOf(f.cols[k])]) {
+                d.error = true
+                if (!d.error) data.errors.push({ e: '1', file: f.name, line: data.lines, k: k })
+              }
+              else {
+                if (k === 'date') d[k] = f.date(r[head.indexOf(f.cols[k])])
+                else d[k] = r[head.indexOf(f.cols[k])] * 1
+              }
+              if (!d[k] && d[k] !== 0 && !d.error) {
+                d.error = true
+                data.errors.push({ e: '2', file: f.name, line: data.lines, k: k })
               }
             }
-            else {
-              if (!d.filter && (d[x]<f.filter[x].min || d[x]>f.filter[x].max)) {
-                d.filter=true
-                l[x]=d[x]
-                data.filter++ //.push(l)
-              }
+            if (!d.error && ((!d.x && d.x !== 0) || (!d.y && d.y !== 0) || !d.date)) {
+              d.error = true
+              data.errors.push({ e: '3', file: f.name, line: data.lines, x: d.x, y: d.y })
             }
-          })
-          if (!d.error && !d.filter) {
-            const year=d.date&&d.date.getFullYear()
-            if (!data[year]) data[year] = []
-            data[year].push(d)
-            const p = Math.round(d.x) * 1000 + Math.round(d.y)
-            if (!data.ps[p]) data.ps[p] = {}
-            if (!data.ps[p][year]) data.ps[p][year] = []
-            data.ps[p][year].push(d)
-            ;['x', 'y', 'n'].forEach(k => {
-                if (data.l[k] === undefined) data.l[k] = { min: d[k], max: d[k] }
-                else if (d[k] < data.l[k].min) data.l[k].min = d[k]
-                else if (d[k] > data.l[k].max) data.l[k].max = d[k]
-              })
+            if (!d.error && f.filter) Object.keys(f.filter).forEach(x => {
+              let l = { line: data.lines }
+              if (x === 'date') {
+                if (!d.filter && (d.date.getFullYear() < f.filter.date.min || d.date.getFullYear() > f.filter.date.max)) {
+                  d.filter = true
+                  l[x] = d[x].toString()
+                  data.filter++ //.push(l)
+                }
+              }
+              else {
+                if (!d.filter && (d[x] < f.filter[x].min || d[x] > f.filter[x].max)) {
+                  d.filter = true
+                  l[x] = d[x]
+                  data.filter++ //.push(l)
+                }
+              }
+            })
+            if (!d.error && !d.filter) {
+              const year = d.date.getFullYear()
+              const month = d.date.getMonth()
+              const p = Math.round(d.x * 10000) + d.y
+              if (!data.ps[year]) data.ps[year] = {}
+              if (!data.ps[year][month]) data.ps[year][month] = {}
+              if (!data.ps[year][month][p]) {
+                data.ps[year][month][p] = d
+                  ;['x', 'y', 'c', 's', 't'].forEach(k => {
+                    if (data.l[k] === undefined) data.l[k] = { min: d[k], max: d[k] }
+                    else if (d[k] === -1e34) { /*skip*/ }
+                    else if (d[k] < data.l[k].min) data.l[k].min = d[k]
+                    else if (d[k] > data.l[k].max) data.l[k].max = d[k]
+                  })
+
+              }
+              else data.errors.push({ e: 'dupe', file: f.name, line: data.lines, x: d.x, y: d.y })
+            }
           }
-        }
-        if (data.errors.length<f.errors) {
-          Object.keys(data.ps).forEach(p => {
-          const n = Object.keys(data.ps[p]).length
-          Object.keys(data.ps[p]).forEach(y => {
-            if (!data.ys[y]) data.ys[y] = []
-            if (!data.ys[y][n]) data.ys[y][n] = []
-            data.ys[y][n].push(p)
-          })
-          if (!data.n[n]) data.n[n] = []
-            data.n[n].push(p)
-          })
-          data.t = this.totals(data)
-          resolve(data)
-        }
-        else reject(data)
-      })
+          if (data.errors.length < f.errors) {
+            /* Object.keys(data.ps).forEach(p => {
+               const n = Object.keys(data.ps[p]).length
+               Object.keys(data.ps[p]).forEach(y => {
+                 if (!data.ys[y]) data.ys[y] = []
+                 if (!data.ys[y][n]) data.ys[y][n] = []
+                 data.ys[y][n].push(p)
+               })
+               if (!data.n[n]) data.n[n] = []
+               data.n[n].push(p)
+             })
+             data.t = this.totals(data)
+             */
+            resolve(data)
+          }
+          else reject(data)
+        })
     })
   }
   totals(data) {
@@ -132,48 +137,70 @@ class Emma extends Component {
     return ret
   }
   render() {
-    const year = this.state.y || this.state.year
-    const data=this.state.data?this.data[this.state.data]:null
-    if (!year) return <div>loading data ...</div>
-    else if (!data) return <Select ks={Object.keys(this.data)} k={this.state.data} set={(x) => this.setState({ data: x })} name="Data" />
-    else if (!this.state.y &&!this.timer) this.timer=setTimeout(()=>{
-      this.timer=null
-      this.setState({ year: year === 2018 ? 1993 : year + 1})
-    }, year === 2018 ? 5000 : 1000)
-
+    const mnth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const year = this.state.y
+    const month = this.state.m
+    const f = this.state.f
+    const data = this.state.data
+    if (!data) return <div>loading data ...</div>
+    /*else if (!this.state.y && !this.timer) this.timer = setTimeout(() => {
+      this.timer = null
+      if (month < 11) this.setState({ month: month + 1 })
+      else this.setState({ month: 0 })
+    }, month === 10 ? 5000 : 1000)
+    */
     return <div>
       <div>
-        <Select ks={Object.keys(data.ys)} k={this.state.y} set={(y) => this.setState({ y: y })} name="Year" />
-        <Select ks={Object.keys(data.n).reverse()} k={this.state.n} set={(n) => this.setState({ n: n })} name="N" />
-        <Select ks={Object.keys(this.data)} k={this.state.data} set={(x) => this.setState({ data: x })} name="Data" />
-        <span>{year}</span>
+        <Select ks={Object.keys(data.ps)} k={this.state.y} set={y => this.setState({ y: y })} name="Year" />
+        <Select ks={Object.keys(data.ps[2019])} k={this.state.m} set={m => this.setState({ m: m })} name="Month" />
+        <Select ks={['c', 's', 't']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
+        <span> {year} {mnth[month]}</span>
       </div>
-      {data&&<Map bounds={[[data.l.x.min, data.l.y.min], [data.l.x.max, data.l.y.max]]}>
+      {data && <Map bounds={[[data.l.x.min, data.l.y.min], [data.l.x.max, data.l.y.max]]}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        <Points data={data} year={year} n={this.state.n||0} />
+        <PYM data={data} month={month} year={year} f={f} />
       </Map>}
-      {data&&<Totals data={data}/>}
     </div>
   }
+  //      {data && <Totals data={data} />}
 }
-class Points extends Component {
+
+class PYM extends Component {
   render() {
-    let ret = [], i = 0
-    this.props.data[this.props.year].forEach(d => {
-      const p = Math.round(d.x) * 1000 + Math.round(d.y)
-      if (Object.keys(this.props.data.ps[p]).length >= this.props.n) {
-        const l = this.props.data.l, c =(d.n-l.n.min)/(l.n.max - l.n.min)
-        const color = d.n&&'#00'+(255-Math.round(c*255)).toString(16)+'00'
-        ret.push(<CircleMarker key={i++} center={[d.x, d.y]} radius={1} color={color} />)
-      }
-    })
+    const y = this.props.year, m = this.props.month, f = this.props.f, d = this.props.data,
+      ys = Object.keys(d.ps), ms = Object.keys(d.ps[2019])
+    let ret = []
+    if (!y) {
+      ys.forEach(y => {
+        if (!m) ms.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
+        else ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />)
+      })
+    }
+    else if (!m) ms.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
+    else ret = <Points year={y} month={m} f={f} data={d} />
     return ret
   }
 }
 
+class Points extends Component {
+  render() {
+    let i = this.props.i || 0, ret = []
+    const y = this.props.year, m = this.props.month, f = this.props.f, d = this.props.data,
+      ps = y && m && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
+    //console.log('Points', { y, m, d: this.props.data.ps[y][m], l: d.l })
+    if (ps) ps.forEach(p => {
+      const v = d.ps[y][m][p]
+      const l = this.props.data.l, c = (v[f] - l[f].min) / (l[f].max - l[f].min)
+      const color = v[f] && '#00' + (255 - Math.round(c * 255)).toString(16) + '00'
+      if (v[f] !== -1e34) ret.push(<CircleMarker key={i++} center={[v.x, v.y]} radius={1} color={color} />)
+    })
+    return ret
+  }
+}
+/*
 class Totals extends Component {
   render() {
     const d = this.props.data, totals = this.props.data['t']
@@ -205,6 +232,7 @@ class Totals extends Component {
     </table>
   }
 }
+*/
 
 class Select extends Component {
   set = (e) => {
@@ -212,7 +240,7 @@ class Select extends Component {
     this.props.set(e.target.value)
   }
   render() {
-    let options = [<option key={0} value=''>{this.props.name}</option>]
+    let options = [<option key={''} value=''>{this.props.name}</option>]
     this.props.ks.forEach(e => { options.push(<option key={e}>{e}</option>) })
     return <span>
       <select value={this.props.k || ''} onChange={this.set}>{options}</select>
@@ -220,4 +248,4 @@ class Select extends Component {
   }
 }
 
-export {Emma}
+export { Emma }
