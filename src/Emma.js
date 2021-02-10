@@ -1,8 +1,9 @@
 import React, { Component } from 'react'
 import { Map, TileLayer, CircleMarker } from 'react-leaflet'
-//import cpr from './cpr.csv.gz'
+import cpr from './cpr.csv.gz'
 import SOCAT from './SOCAT.csv.gz'
 import pako from 'pako'
+const mnth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function dd_mm_yyyy(str) {
   const m = str.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)( (\d\d):(\d\d))?$/)
@@ -17,15 +18,16 @@ class Emma extends Component {
   componentDidMount() {
     [
       //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
-      //{ data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', n: '195'}, date:dd_mm_yyyy, errors:20}
+      { data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', ABUN: '195' }, date: dd_mm_yyyy, errors: 20 },
       //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
-      { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', c: 'FCO2_AVE_WEIGHTED', s: 'SALINITY_AVE_WEIGHTED', t: 'SST_AVE_WEIGHTED' }, filter: { s: { min: 26, max: 40 }, c: { min: 200, max: 500 }, date: { min: 1993, max: 2019 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
+      { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', CO2: 'FCO2_AVE_WEIGHTED', SSS: 'SALINITY_AVE_WEIGHTED', SST: 'SST_AVE_WEIGHTED' }, filter: { SSS: { min: 26, max: 40 }, CO2: { min: 200, max: 500 }, date: { min: 1993, max: 2019 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
     ].forEach(s => this.load_data(s)
       .then(d => {
         this.data[d.name] = d
         if (d.errors.length) console.log(d.name, 'errors', d.errors)
         console.log(d.name, { lines: d.lines, filtered: d.filter, d })
-        if (d.name === 'SOCAT') this.setState({ year: 1993, month: 0, f: 'c', data: d })
+        if (d.name === 'SOCAT') this.setState({ socat: d })
+        else this.setState({ cpr: d })
       }).catch(e => {
         console.error(e.name, 'too many errors', e.errors)
       }))
@@ -87,7 +89,7 @@ class Emma extends Component {
               if (!data.ps[year][month]) data.ps[year][month] = {}
               if (!data.ps[year][month][p]) {
                 data.ps[year][month][p] = d
-                  ;['x', 'y', 'c', 's', 't'].forEach(k => {
+                  ;['x', 'y', 'CO2', 'SSS', 'SST', 'ABUN'].forEach(k => {
                     if (data.l[k] === undefined) data.l[k] = { min: d[k], max: d[k] }
                     else if (d[k] === -1e34) { /*skip*/ }
                     else if (d[k] < data.l[k].min) data.l[k].min = d[k]
@@ -137,12 +139,13 @@ class Emma extends Component {
     return ret
   }
   render() {
-    const mnth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const year = this.state.y
     const month = this.state.m
     const f = this.state.f
-    const data = this.state.data
-    if (!data) return <div>loading data ...</div>
+    const socat = this.state.socat
+    const cpr = this.state.cpr
+    if (!socat) return <div>loading data ...</div>
+    console.log('cpr', { limits: cpr.l, Jul2018: cpr.ps[2018][6] })
     /*else if (!this.state.y && !this.timer) this.timer = setTimeout(() => {
       this.timer = null
       if (month < 11) this.setState({ month: month + 1 })
@@ -151,17 +154,17 @@ class Emma extends Component {
     */
     return <div>
       <div>
-        <Select ks={Object.keys(data.ps)} k={this.state.y} set={y => this.setState({ y: y })} name="Year" />
-        <Select ks={Object.keys(data.ps[2019])} k={this.state.m} set={m => this.setState({ m: m })} name="Month" />
-        <Select ks={['c', 's', 't']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
+        <Select ks={Object.keys(socat.ps)} k={this.state.y} set={y => this.setState({ y: y })} name="Year" />
+        <Select ks={mnth} k={this.state.m} set={m => this.setState({ m: m })} name="Month" />
+        <Select ks={['CO2', 'SSS', 'SST', 'ABUN']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
         <span> {year} {mnth[month]}</span>
       </div>
-      {data && <Map bounds={[[data.l.x.min, data.l.y.min], [data.l.x.max, data.l.y.max]]}>
+      {socat && <Map bounds={[[socat.l.x.min, socat.l.y.min], [socat.l.x.max, socat.l.y.max]]}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        <PYM data={data} month={month} year={year} f={f} />
+        {f && <PYM data={f === 'ABUN' ? cpr : socat} month={month} year={year} f={f} />}
       </Map>}
     </div>
   }
@@ -171,15 +174,16 @@ class Emma extends Component {
 class PYM extends Component {
   render() {
     const y = this.props.year, m = this.props.month, f = this.props.f, d = this.props.data,
-      ys = Object.keys(d.ps), ms = Object.keys(d.ps[2019])
+      ys = Object.keys(d.ps)
+    //console.log('PYM', { y, m, f, d, l: d.l })
     let ret = []
     if (!y) {
       ys.forEach(y => {
-        if (!m) ms.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
+        if (!m) mnth.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
         else ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />)
       })
     }
-    else if (!m) ms.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
+    else if (!m) mnth.forEach(m => ret = ret.concat(<Points i={ret.length} year={y} month={m} f={f} data={d} />))
     else ret = <Points year={y} month={m} f={f} data={d} />
     return ret
   }
@@ -188,9 +192,9 @@ class PYM extends Component {
 class Points extends Component {
   render() {
     let i = this.props.i || 0, ret = []
-    const y = this.props.year, m = this.props.month, f = this.props.f, d = this.props.data,
+    const y = this.props.year, mn = this.props.month, m = mn && mnth.indexOf(mn), f = this.props.f, d = this.props.data,
       ps = y && m && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
-    //console.log('Points', { y, m, d: this.props.data.ps[y][m], l: d.l })
+    //console.log('Points', { y, m, f, d, l: d.l })
     if (ps) ps.forEach(p => {
       const v = d.ps[y][m][p]
       const l = this.props.data.l, c = (v[f] - l[f].min) / (l[f].max - l[f].min)
