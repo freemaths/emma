@@ -177,37 +177,39 @@ class PYM extends Component {
   render() {
     const y = this.props.y, m = this.props.m, y2 = this.props.y2, m2 = this.props.m2, f = this.props.f, d = this.props.data,
       ys = Object.keys(d.ps)
-    //console.log('PYM', { y, m, f, d, l: d.l })
+    console.log('PYM', { y, y2, m, m2, f, d, l: d.l })
     let ret = []
     ys.forEach(yr => {
       if (!y || yr === y || (y2 && yr <= y2 && yr > y)) {
         mnth.forEach(mn => {
           const mi = mnth.indexOf(mn)
           if ((!m && m !== 0) || mi === m || (m2 && mi > m && mi <= m2)) {
-            ret = ret.concat(<Points i={ret.length} y={yr} m={mi} f={f} data={d} />)
+            const ps = points({ i: ret.length, y: yr, m: mi, f, d })
+            ret = ret.concat(ps)
+            console.log(yr, mn, ps.length)
           }
         })
       }
     })
-    return ret
+    return ret.length ? ret.map(p => <CircleMarker key={p.key} center={p.center} radius={p.radius} color={p.color} />) : null
   }
 }
 
-class Points extends Component {
-  render() {
-    let i = this.props.i || 0, ret = []
-    const y = this.props.y, m = this.props.m, f = this.props.f, d = this.props.data,
-      ps = y && m && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
-    //console.log('Points', { y, m, f, d, l: d.l })
-    if (ps) ps.forEach(p => {
-      const v = d.ps[y][m][p]
-      const l = this.props.data.l, c = (v[f] - l[f].min) / (l[f].max - l[f].min)
-      const color = v[f] && '#00' + (255 - Math.round(c * 255)).toString(16) + '00'
-      if (v[f] !== -1e34) ret.push(<CircleMarker key={i++} center={[v.x, v.y]} radius={1} color={color} />)
-    })
-    return ret
-  }
+function points(p) {
+  let i = p.i || 0, ret = []
+  const y = p.y, m = p.m, f = p.f, d = p.d,
+    ps = y && (m || m === 0) && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
+  //console.log('Points', { y, m, f, d, l: d.l })
+  if (ps) ps.forEach(p => {
+    const v = d.ps[y][m][p]
+    const l = d.l, c = (v[f] - l[f].min) / (l[f].max - l[f].min)
+    const color = v[f] && '#00' + (255 - Math.round(c * 255)).toString(16) + '00'
+    //if (color.length !== 7) console.log(color) - 0 if v[f]===0 so just dot
+    if (v[f] !== -1e34) ret.push({ key: i++, center: [v.x, v.y], radius: 1, color: color })
+  })
+  return ret
 }
+
 /*
 class Totals extends Component {
   render() {
