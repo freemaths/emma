@@ -138,27 +138,49 @@ class Emma extends Component {
     //console.log('totals',ret)
     return ret
   }
+  monthTimer = (set) => {
+    const m = this.state.m
+    if (this.timer) clearTimeout(this.timer)
+    if (set || m === 11) this.setState({ m: 0, y: null })
+    else this.setState({ m: m + 1, y: null })
+    this.timer = setTimeout(this.monthTimer, m === 11 ? 3000 : 1000)
+  }
+  yearTimer = (set) => {
+    const y = this.state.y
+    const socat = this.state.socat, ys = Object.keys(socat.ps)
+    if (this.timer) clearTimeout(this.timer)
+    if (set || y === ys[ys.length - 1]) this.setState({ y: ys[0], m: null })
+    else this.setState({ y: ys[ys.indexOf(y) + 1], m: null })
+    this.timer = setTimeout(this.yearTimer, y === ys[ys.length - 1] ? 3000 : 1000)
+  }
+  animate = (arg) => {
+    const a = ['Animate', 'ABUN by month', 'ABUN by year', 'CO2 by month', 'SSS by month', 'SST by month'].indexOf(arg)
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = null
+    if (a === 0 || a === -1) this.setState({ a: null, y: null, m: null, f: null })
+    else this.setState({ a: arg, f: a < 3 ? 'ABUN' : arg.substr(0, 3) })
+    if (a === 1) this.monthTimer(true)
+    else if (a === 2) this.yearTimer(true)
+    else if (a > 2) this.monthTimer(true)
+  }
   render() {
-    const y = this.state.y, y2 = this.state.y2
+    const socat = this.state.socat
+    if (!socat) return <div>loading data ...</div>
+    const y = this.state.y, y2 = this.state.y2, ys = Object.keys(socat.ps)
     const m = this.state.m, m2 = this.state.m2
     const f = this.state.f
-    const socat = this.state.socat
     const cpr = this.state.cpr
-    if (!socat) return <div>loading data ...</div>
-    //console.log('cpr', { limits: cpr.l, Jul2018: cpr.ps[2018][6] })
-    /*else if (!this.state.y && !this.timer) this.timer = setTimeout(() => {
-      this.timer = null
-      if (month < 11) this.setState({ month: month + 1 })
-      else this.setState({ month: 0 })
-    }, month === 10 ? 5000 : 1000)
-    */
     return <div>
       <div>
-        <Select ks={Object.keys(socat.ps)} k={y} set={y => this.setState({ y: y })} name="Year" />
-        <Select ks={mnth} k={mnth[m]} set={m => this.setState({ m: m && mnth.indexOf(m) })} name="Month" />
-        <Select ks={Object.keys(socat.ps)} k={y2} set={y => this.setState({ y2: y })} name="...Year" />
-        <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" />
-        <Select ks={['CO2', 'SSS', 'SST', 'ABUN']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
+        <Select ks={['ABUN by month', 'ABUN by year', 'CO2 by month', 'SSS by month', 'SST by month']} k={this.state.a} set={this.animate} name="Animate" />
+        {this.state.a ? <button onClick={() => this.animate('stop')}>Stop</button> :
+          <React.Fragment>
+            <Select ks={['CO2', 'SSS', 'SST', 'ABUN']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
+            <Select ks={ys} k={y} set={y => this.setState({ y: y })} name="Year" />
+            <Select ks={ys} k={y2} set={y => this.setState({ y2: y })} name="...Year" />
+            <Select ks={mnth} k={mnth[m]} set={m => this.setState({ m: m && mnth.indexOf(m) })} name="Month" />
+            <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" />
+          </React.Fragment>}
         <span> {y}{y2 ? '-' + y2 : null} {mnth[m]}{m2 ? '-' + mnth[m2] : null}</span>
       </div>
       {socat && <Map bounds={[[socat.l.x.min, socat.l.y.min], [socat.l.x.max, socat.l.y.max]]}>
@@ -166,7 +188,7 @@ class Emma extends Component {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        {f && <PYM data={f === 'ABUN' ? cpr : socat} m={m} y={y} y2={y2} m2={m2} f={f} />}
+        {f ? <PYM data={f === 'ABUN' ? cpr : socat} m={m} y={y} y2={y2} m2={m2} f={f} a={this.state.a} /> : null}
       </Map>}
     </div>
   }
@@ -176,8 +198,8 @@ class Emma extends Component {
 class PYM extends Component {
   render() {
     const y = this.props.y, m = this.props.m, y2 = this.props.y2, m2 = this.props.m2, f = this.props.f, d = this.props.data,
-      ys = Object.keys(d.ps)
-    console.log('PYM', { y, y2, m, m2, f, d, l: d.l })
+      ys = Object.keys(d.ps), a = this.props.a
+    //console.log('PYM', { y, y2, m, m2, f, d, l: d.l })
     let ret = []
     ys.forEach(yr => {
       if (!y || yr === y || (y2 && yr <= y2 && yr > y)) {
@@ -186,7 +208,7 @@ class PYM extends Component {
           if ((!m && m !== 0) || mi === m || (m2 && mi > m && mi <= m2)) {
             const ps = points({ i: ret.length, y: yr, m: mi, f, d })
             ret = ret.concat(ps)
-            console.log(yr, mn, ps.length)
+            if (!a) console.log(yr, mn, ps.length)
           }
         })
       }

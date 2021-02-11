@@ -1,0 +1,30 @@
+{
+  "short_name": "FreeMaths",
+  "name": "FreeMaths.uk",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "images/freemaths-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "images/freemaths-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "permissions": {
+    "video-capture": {
+      "description": "Required to take photos of working"
+    }
+  },
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
