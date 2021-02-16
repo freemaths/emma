@@ -1,6 +1,6 @@
 {
   "name": "emma",
-  "homepage": "/emma/docs/",
+  "homepage": "/emma/",
   "version": "0.3.1",
   "private": true,
   "dependencies": {
