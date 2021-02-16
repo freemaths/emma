@@ -18,7 +18,7 @@ class Emma extends Component {
   componentDidMount() {
     [
       //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
-      { data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', ABUN: '195' }, date: dd_mm_yyyy, errors: 20 },
+      { data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', ABUN: '195' }, date: dd_mm_yyyy, filter: { date: { min: 1993, max: 2018 } }, errors: 20 },
       //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
       { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', CO2: 'FCO2_AVE_WEIGHTED', SSS: 'SALINITY_AVE_WEIGHTED', SST: 'SST_AVE_WEIGHTED' }, filter: { SSS: { min: 26, max: 40 }, CO2: { min: 200, max: 500 }, date: { min: 1993, max: 2018 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
     ].forEach(s => this.load_data(s)
@@ -144,7 +144,7 @@ class Emma extends Component {
   monthTimer = (set) => {
     const m = this.state.m
     if (this.timer) clearTimeout(this.timer)
-    if (set) this.setState({ a: set, m: 0, y: 'all' })
+    if (set) this.setState({ a: set, m: 0, y: 'all', y2: null, m2: null })
     else if (m === 11) this.setState({ m: 0 })
     else this.setState({ m: m + 1 })
     this.timer = setTimeout(this.monthTimer, m === 11 ? 3000 : 1000)
@@ -153,7 +153,7 @@ class Emma extends Component {
     const y = this.state.y
     const socat = this.state.socat, ys = Object.keys(socat.ps)
     if (this.timer) clearTimeout(this.timer)
-    if (set) this.setState({ a: set, y: ys[0], m: 'all' })
+    if (set) this.setState({ a: set, y: ys[0], m: 'all', y2: null, m2: null })
     else if (y === ys[ys.length - 1]) this.setState({ y: ys[0] })
     else this.setState({ y: ys[ys.indexOf(y) + 1] })
     this.timer = setTimeout(this.yearTimer, y === ys[ys.length - 1] ? 3000 : 1000)
@@ -182,10 +182,10 @@ class Emma extends Component {
             <span> </span>
             <Select ks={['by year', 'by month']} k={a} set={this.animate} name="Animate" />
             <span> or </span>
-            <Select ks={ys} all k={y} set={y => this.setState({ y: y })} name="Year" />
-            {y && y !== 'all' ? <Select ks={ys} k={y2} set={y => this.setState({ y2: y })} name="...Year" /> : null}
-            <Select ks={mnth} all k={m === 'all' ? 'all' : mnth[m]} set={m => this.setState({ m: m === 'all' ? 'all' : m && mnth.indexOf(m) })} name="Month" />
-            {(m || m === 0) && m !== 'all' ? <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" /> : null}
+            <Select ks={ys} all k={y} set={y => this.setState({ y: y, y2: null, })} name="Year" />
+            {y && y !== 'all' && y !== '2018' ? <Select ks={ys} s={y} k={y2} set={y => this.setState({ y2: y })} name="...Year" /> : null}
+            <Select ks={mnth} all k={m === 'all' ? 'all' : mnth[m]} set={m => this.setState({ m: m === 'all' ? 'all' : m && mnth.indexOf(m), m2: null })} name="Month" />
+            {(m || m === 0) && m !== 'all' && m !== 11 ? <Select ks={mnth} s={mnth[m]} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" /> : null}
           </React.Fragment> : null
         }
         <span> {y === 'all' ? '1993-2018' : y}{y2 ? '-' + y2 : null} {m === 12 || m === 'all' ? 'Jan-Dec' : mnth[m]}{m2 ? '-' + mnth[m2] : null}</span>
@@ -301,8 +301,13 @@ class Select extends Component {
   }
   render() {
     let options = [<option key={''} value=''>{this.props.name}</option>]
+    const s = this.props.s
+    let ss = false
     if (this.props.all) options.push(<option key={'all'} value='all'>All</option>)
-    this.props.ks.forEach(e => { options.push(<option key={e}>{e}</option>) })
+    this.props.ks.forEach(e => {
+      if (!s || ss) options.push(<option key={e}>{e}</option>)
+      else if (s === e) ss = true
+    })
     return <span>
       <select value={this.props.k || ''} onChange={this.set}>{options}</select>
     </span>
