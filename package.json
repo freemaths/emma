@@ -1,5 +1,6 @@
 {
   "name": "emma",
+  "homepage": "/Dissertation-animation-/docs",
   "version": "0.3.1",
   "private": true,
   "dependencies": {

@@ -20,7 +20,7 @@ class Emma extends Component {
       //["Sample_Id", "Latitude", "Longitude", "Midpoint_Date_Local", "Year", "Month", "195", "10508", "10509", "10510", "10511", "10512", "10513", "10514", "10515"]
       { data: cpr, name: 'cpr', cols: { x: 'Latitude', y: 'Longitude', date: 'Midpoint_Date_Local', ABUN: '195' }, date: dd_mm_yyyy, errors: 20 },
       //["DATE", "LAT", "LON", " COUNT_NCRUISE", " FCO2_COUNT_NOBS", " FCO2_AVE_WEIGHTED", " FCO2_AVE_UNWTD", " FCO2_MIN_UNWTD", " FCO2_MAX_UNWTD", " SST_COUNT_NOBS", " SST_AVE_WEIGHTED", " SST_AVE_UNWTD", " SST_MIN_UNWTD", " SST_MAX_UNWTD", " SALINITY_COUNT_NOBS", " SALINITY_AVE_WEIGHTED", " SALINITY_AVE_UNWTD", " SALINITY_MIN_UNWTD", " SALINITY_MAX_UNWTD"
-      { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', CO2: 'FCO2_AVE_WEIGHTED', SSS: 'SALINITY_AVE_WEIGHTED', SST: 'SST_AVE_WEIGHTED' }, filter: { SSS: { min: 26, max: 40 }, CO2: { min: 200, max: 500 }, date: { min: 1993, max: 2019 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
+      { data: SOCAT, name: 'SOCAT', cols: { x: 'LAT', y: 'LON', date: 'DATE', CO2: 'FCO2_AVE_WEIGHTED', SSS: 'SALINITY_AVE_WEIGHTED', SST: 'SST_AVE_WEIGHTED' }, filter: { SSS: { min: 26, max: 40 }, CO2: { min: 200, max: 500 }, date: { min: 1993, max: 2018 }, x: { min: 30, max: 80 }, y: { min: -75, max: 26 } }, date: dd_mm_yyyy, errors: 500 }
     ].forEach(s => this.load_data(s)
       .then(d => {
         this.data[d.name] = d
@@ -31,6 +31,9 @@ class Emma extends Component {
       }).catch(e => {
         console.error(e.name, 'too many errors', e.errors)
       }))
+  }
+  componentWillUnmount() {
+    this.animate('stop')
   }
   load_data(f) {
     return new Promise((resolve, reject) => {
@@ -141,54 +144,59 @@ class Emma extends Component {
   monthTimer = (set) => {
     const m = this.state.m
     if (this.timer) clearTimeout(this.timer)
-    if (set || m === 11) this.setState({ m: 0, y: null })
-    else this.setState({ m: m + 1, y: null })
+    if (set) this.setState({ a: set, m: 0, y: 'all' })
+    else if (m === 11) this.setState({ m: 0 })
+    else this.setState({ m: m + 1 })
     this.timer = setTimeout(this.monthTimer, m === 11 ? 3000 : 1000)
   }
   yearTimer = (set) => {
     const y = this.state.y
     const socat = this.state.socat, ys = Object.keys(socat.ps)
     if (this.timer) clearTimeout(this.timer)
-    if (set || y === ys[ys.length - 1]) this.setState({ y: ys[0], m: null })
-    else this.setState({ y: ys[ys.indexOf(y) + 1], m: null })
+    if (set) this.setState({ a: set, y: ys[0], m: 'all' })
+    else if (y === ys[ys.length - 1]) this.setState({ y: ys[0] })
+    else this.setState({ y: ys[ys.indexOf(y) + 1] })
     this.timer = setTimeout(this.yearTimer, y === ys[ys.length - 1] ? 3000 : 1000)
   }
   animate = (arg) => {
-    const a = ['Animate', 'ABUN by month', 'ABUN by year', 'CO2 by month', 'SSS by month', 'SST by month'].indexOf(arg)
+    const a = ['Animate', 'by month', 'by year'].indexOf(arg)
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
-    if (a === 0 || a === -1) this.setState({ a: null, y: null, m: null, f: null })
-    else this.setState({ a: arg, f: a < 3 ? 'ABUN' : arg.substr(0, 3) })
-    if (a === 1) this.monthTimer(true)
-    else if (a === 2) this.yearTimer(true)
-    else if (a > 2) this.monthTimer(true)
+    if (a === 0 || a === -1) this.setState({ a: null, y: null, m: null })
+    else if (a === 1) this.monthTimer(arg)
+    else if (a === 2) this.yearTimer(arg)
   }
   render() {
     const socat = this.state.socat
     if (!socat) return <div>loading data ...</div>
     const y = this.state.y, y2 = this.state.y2, ys = Object.keys(socat.ps)
     const m = this.state.m, m2 = this.state.m2
-    const f = this.state.f
+    const c = this.state.c, s = this.state.s, a = this.state.a
     const cpr = this.state.cpr
     return <div>
       <div>
-        <Select ks={['ABUN by month', 'ABUN by year', 'CO2 by month', 'SSS by month', 'SST by month']} k={this.state.a} set={this.animate} name="Animate" />
-        {this.state.a ? <button onClick={() => this.animate('stop')}>Stop</button> :
+        <Select ks={['ABUN']} k={this.state.c} set={f => this.setState({ c: f })} name="CPR" />
+        <Select ks={['CO2', 'SSS', 'SST']} k={this.state.s} set={f => this.setState({ s: f })} name="SOCAT" />
+        {c || s ? a === 'by year' || a === 'by month' ? <button onClick={() => this.animate('stop')}>Stop</button> :
           <React.Fragment>
-            <Select ks={['CO2', 'SSS', 'SST', 'ABUN']} k={this.state.f} set={f => this.setState({ f: f })} name="Field" />
-            <Select ks={ys} k={y} set={y => this.setState({ y: y })} name="Year" />
-            <Select ks={ys} k={y2} set={y => this.setState({ y2: y })} name="...Year" />
-            <Select ks={mnth} k={mnth[m]} set={m => this.setState({ m: m && mnth.indexOf(m) })} name="Month" />
-            <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" />
-          </React.Fragment>}
-        <span> {y}{y2 ? '-' + y2 : null} {mnth[m]}{m2 ? '-' + mnth[m2] : null}</span>
+            <span> </span>
+            <Select ks={['by year', 'by month']} k={a} set={this.animate} name="Animate" />
+            <span> or </span>
+            <Select ks={ys} all k={y} set={y => this.setState({ y: y })} name="Year" />
+            {y && y !== 'all' ? <Select ks={ys} k={y2} set={y => this.setState({ y2: y })} name="...Year" /> : null}
+            <Select ks={mnth} all k={m === 'all' ? 'all' : mnth[m]} set={m => this.setState({ m: m === 'all' ? 'all' : m && mnth.indexOf(m) })} name="Month" />
+            {(m || m === 0) && m !== 'all' ? <Select ks={mnth} k={mnth[m2]} set={m => this.setState({ m2: m && mnth.indexOf(m) })} name="...Month" /> : null}
+          </React.Fragment> : null
+        }
+        <span> {y === 'all' ? '1993-2018' : y}{y2 ? '-' + y2 : null} {m === 12 || m === 'all' ? 'Jan-Dec' : mnth[m]}{m2 ? '-' + mnth[m2] : null}</span>
       </div>
       {socat && <Map bounds={[[socat.l.x.min, socat.l.y.min], [socat.l.x.max, socat.l.y.max]]}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        {f ? <PYM data={f === 'ABUN' ? cpr : socat} m={m} y={y} y2={y2} m2={m2} f={f} a={this.state.a} /> : null}
+        {s ? <PYM data={socat} m={m} y={y} y2={y2} m2={m2} f={s} a={this.state.a} /> : null}
+        {c ? <PYM data={cpr} m={m} y={y} y2={y2} m2={m2} f={c} a={this.state.a} /> : null}
       </Map>}
     </div>
   }
@@ -200,34 +208,54 @@ class PYM extends Component {
     const y = this.props.y, m = this.props.m, y2 = this.props.y2, m2 = this.props.m2, f = this.props.f, d = this.props.data,
       ys = Object.keys(d.ps), a = this.props.a
     //console.log('PYM', { y, y2, m, m2, f, d, l: d.l })
-    let ret = []
+    let ret = [], n = 0, dedupe = 0, zero = 0, pa = []
     ys.forEach(yr => {
-      if (!y || yr === y || (y2 && yr <= y2 && yr > y)) {
+      if (y === 'all' || yr === y || (y2 && yr <= y2 && yr > y)) {
         mnth.forEach(mn => {
           const mi = mnth.indexOf(mn)
-          if ((!m && m !== 0) || mi === m || (m2 && mi > m && mi <= m2)) {
-            const ps = points({ i: ret.length, y: yr, m: mi, f, d })
-            ret = ret.concat(ps)
+          if (m === 'all' || m === 12 || mi === m || (m2 && mi > m && mi <= m2)) {
+            const ps = points({ y: yr, m: mi, f, d })
+            if (ps.length) {
+              pa.push(ps)
+              n += ps.length
+            }
             if (!a) console.log(yr, mn, ps.length)
           }
         })
       }
     })
-    return ret.length ? ret.map(p => <CircleMarker key={p.key} center={p.center} radius={p.radius} color={p.color} />) : null
+    if (pa.length) {
+      let i = 0, cs = {}
+      pa.forEach(ps => {
+        ps.forEach(p => {
+          if (!cs[p.center[0] * 1000 + p.center[1]]) {
+            if (n < 7000 || p.color) ret.push(<CircleMarker key={i++} center={p.center} radius={p.radius} color={p.color} />)
+            cs[p.center[0] * 1000 + p.center[1]] = true
+          }
+          else dedupe++
+          if (!p.color) zero++
+        })
+      })
+    }
+    console.log('PYM', { y, m, f, n, zero, dedupe })
+    return ret.length ? ret : null
   }
 }
 
 function points(p) {
-  let i = p.i || 0, ret = []
+  let ret = []
   const y = p.y, m = p.m, f = p.f, d = p.d,
     ps = y && (m || m === 0) && d.ps[y] && d.ps[y][m] && Object.keys(d.ps[y][m])
   //console.log('Points', { y, m, f, d, l: d.l })
   if (ps) ps.forEach(p => {
     const v = d.ps[y][m][p]
     const l = d.l, c = (v[f] - l[f].min) / (l[f].max - l[f].min)
-    const color = v[f] && '#00' + (255 - Math.round(c * 255)).toString(16) + '00'
+    const color = v[f] && (f === 'ABUN' ? v[f] && '#00' + (255 - Math.round(c * 255)).toString(16) + '00'
+      : '#' + (255 - Math.round(c * 255)).toString(16) + '0000')
     //if (color.length !== 7) console.log(color) - 0 if v[f]===0 so just dot
-    if (v[f] !== -1e34) ret.push({ key: i++, center: [v.x, v.y], radius: 1, color: color })
+    if (v[f] !== -1e34) {
+      ret.push({ center: [v.x, v.y], radius: 1, color: color })
+    }
   })
   return ret
 }
@@ -273,6 +301,7 @@ class Select extends Component {
   }
   render() {
     let options = [<option key={''} value=''>{this.props.name}</option>]
+    if (this.props.all) options.push(<option key={'all'} value='all'>All</option>)
     this.props.ks.forEach(e => { options.push(<option key={e}>{e}</option>) })
     return <span>
       <select value={this.props.k || ''} onChange={this.set}>{options}</select>
