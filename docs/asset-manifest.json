@@ -1,20 +1,20 @@
 {
   "files": {
-    "main.css": "/Dissertation-animation-/docs/static/css/main.5f36f048.chunk.css",
-    "main.js": "/Dissertation-animation-/docs/static/js/main.6620e82e.chunk.js",
-    "main.js.map": "/Dissertation-animation-/docs/static/js/main.6620e82e.chunk.js.map",
-    "runtime-main.js": "/Dissertation-animation-/docs/static/js/runtime-main.ce813c8f.js",
-    "runtime-main.js.map": "/Dissertation-animation-/docs/static/js/runtime-main.ce813c8f.js.map",
-    "static/js/2.9a9ad40b.chunk.js": "/Dissertation-animation-/docs/static/js/2.9a9ad40b.chunk.js",
-    "static/js/2.9a9ad40b.chunk.js.map": "/Dissertation-animation-/docs/static/js/2.9a9ad40b.chunk.js.map",
-    "index.html": "/Dissertation-animation-/docs/index.html",
-    "static/css/main.5f36f048.chunk.css.map": "/Dissertation-animation-/docs/static/css/main.5f36f048.chunk.css.map",
-    "static/js/2.9a9ad40b.chunk.js.LICENSE.txt": "/Dissertation-animation-/docs/static/js/2.9a9ad40b.chunk.js.LICENSE.txt",
-    "static/media/SOCAT.csv.c5d052c4.gz": "/Dissertation-animation-/docs/static/media/SOCAT.csv.c5d052c4.gz",
-    "static/media/cpr.csv.24831468.gz": "/Dissertation-animation-/docs/static/media/cpr.csv.24831468.gz"
+    "main.css": "/emma/docs/static/css/main.5f36f048.chunk.css",
+    "main.js": "/emma/docs/static/js/main.6620e82e.chunk.js",
+    "main.js.map": "/emma/docs/static/js/main.6620e82e.chunk.js.map",
+    "runtime-main.js": "/emma/docs/static/js/runtime-main.5c325476.js",
+    "runtime-main.js.map": "/emma/docs/static/js/runtime-main.5c325476.js.map",
+    "static/js/2.9a9ad40b.chunk.js": "/emma/docs/static/js/2.9a9ad40b.chunk.js",
+    "static/js/2.9a9ad40b.chunk.js.map": "/emma/docs/static/js/2.9a9ad40b.chunk.js.map",
+    "index.html": "/emma/docs/index.html",
+    "static/css/main.5f36f048.chunk.css.map": "/emma/docs/static/css/main.5f36f048.chunk.css.map",
+    "static/js/2.9a9ad40b.chunk.js.LICENSE.txt": "/emma/docs/static/js/2.9a9ad40b.chunk.js.LICENSE.txt",
+    "static/media/SOCAT.csv.c5d052c4.gz": "/emma/docs/static/media/SOCAT.csv.c5d052c4.gz",
+    "static/media/cpr.csv.24831468.gz": "/emma/docs/static/media/cpr.csv.24831468.gz"
   },
   "entrypoints": [
-    "static/js/runtime-main.ce813c8f.js",
+    "static/js/runtime-main.5c325476.js",
     "static/js/2.9a9ad40b.chunk.js",
     "static/css/main.5f36f048.chunk.css",
     "static/js/main.6620e82e.chunk.js"
